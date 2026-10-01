@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Policy Compliance Checker</title>
+  <style>
+    body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 12px; }
+    input, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+    textarea { height: 90px; }
+    button { margin-top: 12px; padding: 10px 14px; }
+    pre { background: #111; color: #eee; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Portfolio Policy Compliance Checker</h1>
+  <p>Evaluate IPS drift, concentration limits, restricted holdings, and rebalance triggers.</p>
+
+  <div class="grid">
+    <input id="householdName" value="Anderson Family" placeholder="Household Name" />
+    <input id="targetEquityPercent" type="number" value="65" placeholder="Target Equity %" />
+    <input id="currentEquityPercent" type="number" value="74" placeholder="Current Equity %" />
+    <input id="driftThresholdPercent" type="number" value="5" placeholder="Drift Threshold %" />
+    <input id="concentrationLimitPercent" type="number" value="15" placeholder="Concentration Limit %" />
+  </div>
+
+  <h3>Holdings (Ticker,MarketValue per line)</h3>
+  <textarea id="holdings">AAPL,450000
+MSFT,380000
+VTI,1250000
+BND,620000</textarea>
+
+  <h3>Restricted Tickers (comma-separated)</h3>
+  <input id="restrictedTickers" value="AAPL,XYZ" />
+
+  <button id="runBtn">Run Compliance Check</button>
+  <pre id="output">Waiting...</pre>
+
+  <script>
+    function parseHoldings(text) {
+      return text
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        .map(l => {
+          const [ticker, value] = l.split(',');
+          return { ticker: (ticker || '').trim(), marketValue: parseFloat(value || '0') };
+        });
+    }
+
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const payload = {
+        householdName: document.getElementById('householdName').value,
+        targetEquityPercent: parseInt(document.getElementById('targetEquityPercent').value, 10),
+        currentEquityPercent: parseInt(document.getElementById('currentEquityPercent').value, 10),
+        driftThresholdPercent: parseInt(document.getElementById('driftThresholdPercent').value, 10),
+        concentrationLimitPercent: parseInt(document.getElementById('concentrationLimitPercent').value, 10),
+        holdings: parseHoldings(document.getElementById('holdings').value),
+        restrictedTickers: document.getElementById('restrictedTickers').value.split(',').map(x => x.trim()).filter(Boolean)
+      };
+
+      const res = await fetch('/api/policy-compliance/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>
